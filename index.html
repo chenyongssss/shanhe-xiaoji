@@ -36,7 +36,13 @@
           </div>
         </section>
 
-        <section class="panel">
+        <nav class="sidebar-tabs" aria-label="编辑面板">
+          <button class="sidebar-tab active" data-sidebar-tab="add" type="button">添加</button>
+          <button class="sidebar-tab" data-sidebar-tab="routes" type="button">路线</button>
+          <button class="sidebar-tab" data-sidebar-tab="share" type="button">分享</button>
+        </nav>
+
+        <section class="panel sidebar-tab-panel active-panel" data-panel="add">
           <div class="panel-title">
             <h2>添加旅行城市</h2>
             <button class="icon-button" id="seedButton" title="生成示例" aria-label="生成示例">↗</button>
@@ -90,7 +96,7 @@
           </form>
         </section>
 
-        <section class="panel">
+        <section class="panel sidebar-tab-panel active-panel" data-panel="add">
           <div class="panel-title">
             <h2>浏览</h2>
           </div>
@@ -103,14 +109,14 @@
           </div>
         </section>
 
-        <section class="panel">
+        <section class="panel sidebar-tab-panel" data-panel="routes">
           <div class="panel-title">
             <h2>路线模板</h2>
           </div>
           <div class="template-grid" id="templateGrid"></div>
         </section>
 
-        <section class="panel">
+        <section class="panel sidebar-tab-panel" data-panel="share">
           <div class="panel-title">
             <h2>分享</h2>
           </div>
@@ -123,6 +129,34 @@
       </aside>
 
       <main class="workspace">
+        <section class="mobile-overview" aria-label="移动端旅行地图概览">
+          <div class="brand compact-brand">
+            <div class="brand-mark" aria-hidden="true">记</div>
+            <div>
+              <h1>山河小记</h1>
+              <p>把去过的城市做成一张好看的旅行主页</p>
+            </div>
+          </div>
+          <section class="stats-grid compact-stats" aria-label="旅行统计">
+            <div class="stat-card">
+              <strong id="mobileVisitedCount">0</strong>
+              <span>已去</span>
+            </div>
+            <div class="stat-card">
+              <strong id="mobilePlannedCount">0</strong>
+              <span>计划</span>
+            </div>
+            <div class="stat-card">
+              <strong id="mobilePhotoCount">0</strong>
+              <span>照片</span>
+            </div>
+            <div class="stat-card">
+              <strong id="mobileNoteCount">0</strong>
+              <span>笔记</span>
+            </div>
+          </section>
+        </section>
+
         <header class="topbar">
           <div>
             <p class="eyebrow">Travel Map · Local First</p>
@@ -148,8 +182,10 @@
           <div class="map-board" id="mapBoard">
             <canvas id="mapCanvas" class="map-canvas" aria-label="精细中国旅行地图"></canvas>
             <div id="cityLayer" class="city-layer"></div>
-            <div class="map-source">本地矢量地图 · 城市点位按经纬度投影</div>
+            <div id="mapTooltip" class="map-tooltip" role="status" aria-live="polite"></div>
+            <div class="map-source">本地矢量地图 · 经纬度点位</div>
           </div>
+          <button class="mobile-quick-add" id="mobileQuickAddButton" type="button">点亮城市</button>
         </section>
 
         <section class="content-grid">

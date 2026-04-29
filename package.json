@@ -1,0 +1,17 @@
+{
+  "name": "shanhe-xiaoji",
+  "version": "0.1.0",
+  "private": true,
+  "description": "山河小记 - 中国旅行地图 MVP",
+  "scripts": {
+    "dev": "python -m http.server 5173 --bind 127.0.0.1",
+    "start": "python -m http.server 5173 --bind 127.0.0.1",
+    "build": "node scripts/verify-static-app.mjs"
+  },
+  "keywords": [
+    "travel",
+    "map",
+    "mvp"
+  ],
+  "license": "UNLICENSED"
+}

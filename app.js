@@ -78,15 +78,82 @@ const STATUS_LABELS = {
 
 const STATUS_COLORS = {
   visited: "#ff2442",
-  planned: "#4a82ff",
-  wishlist: "#ffb23f"
+  planned: "#5a8dee",
+  wishlist: "#f4ae3d"
+};
+
+const STATUS_THEMES = {
+  visited: ["#ff2442", "#ff715c"],
+  planned: ["#5a8dee", "#8cc6ff"],
+  wishlist: ["#f4ae3d", "#ffd37d"]
+};
+
+const ICON_THEMES = {
+  heritage: ["#c96f43", "#f0b66f"],
+  nature: ["#5f9b7b", "#9bcf9a"],
+  coast: ["#4d9ccf", "#8ed7df"],
+  food: ["#ff5f57", "#ffb15d"],
+  museum: ["#6d77c5", "#b0a7ff"],
+  flower: ["#ff6fa3", "#ffc0d6"],
+  photo: ["#5b6f88", "#b3c7da"],
+  slow: ["#8b7c63", "#d8c3a3"],
+  snow: ["#75a9d6", "#d7eefc"],
+  desert: ["#d99042", "#f4cf8a"],
+  sunrise: ["#ff7a45", "#ffd36b"],
+  custom: ["#ff2442", "#ff8a76"]
 };
 
 const STORAGE_KEY = "china-travel-map-v3";
 const LEGACY_KEYS = ["china-travel-map-v2", "china-travel-map-v1"];
+const PHOTO_DB_NAME = "china-travel-map-photos";
+const PHOTO_STORE_NAME = "photos";
+const CITY_PROVINCES = {
+  北京: "北京",
+  天津: "天津",
+  哈尔滨: "黑龙江",
+  沈阳: "辽宁",
+  大连: "辽宁",
+  呼和浩特: "内蒙古",
+  西安: "陕西",
+  兰州: "甘肃",
+  敦煌: "甘肃",
+  银川: "宁夏",
+  成都: "四川",
+  重庆: "重庆",
+  昆明: "云南",
+  大理: "云南",
+  丽江: "云南",
+  拉萨: "西藏",
+  贵阳: "贵州",
+  桂林: "广西",
+  长沙: "湖南",
+  武汉: "湖北",
+  郑州: "河南",
+  洛阳: "河南",
+  济南: "山东",
+  青岛: "山东",
+  南京: "江苏",
+  苏州: "江苏",
+  上海: "上海",
+  杭州: "浙江",
+  黄山: "安徽",
+  厦门: "福建",
+  福州: "福建",
+  泉州: "福建",
+  广州: "广东",
+  深圳: "广东",
+  珠海: "广东",
+  海口: "海南",
+  三亚: "海南",
+  乌鲁木齐: "新疆"
+};
 
 let mapGeoJson = null;
 let mapBounds = null;
+let deletedSnapshot = null;
+let photoDbPromise = null;
+const photoCache = new Map();
+const pendingPhotoLoads = new Set();
 let state = {
   cities: {},
   selectedCity: null,
@@ -98,6 +165,7 @@ const elements = {
   cityLayer: document.querySelector("#cityLayer"),
   mapCanvas: document.querySelector("#mapCanvas"),
   mapBoard: document.querySelector("#mapBoard"),
+  mapTooltip: document.querySelector("#mapTooltip"),
   cityForm: document.querySelector("#cityForm"),
   cityName: document.querySelector("#cityName"),
   cityIcon: document.querySelector("#cityIcon"),
@@ -110,6 +178,10 @@ const elements = {
   plannedCount: document.querySelector("#plannedCount"),
   photoCount: document.querySelector("#photoCount"),
   noteCount: document.querySelector("#noteCount"),
+  mobileVisitedCount: document.querySelector("#mobileVisitedCount"),
+  mobilePlannedCount: document.querySelector("#mobilePlannedCount"),
+  mobilePhotoCount: document.querySelector("#mobilePhotoCount"),
+  mobileNoteCount: document.querySelector("#mobileNoteCount"),
   heroText: document.querySelector("#heroText"),
   personaName: document.querySelector("#personaName"),
   emptyState: document.querySelector("#emptyState"),
@@ -131,6 +203,7 @@ const elements = {
   quickNoteButton: document.querySelector("#quickNoteButton"),
   copyCaptionButton: document.querySelector("#copyCaptionButton"),
   seedButton: document.querySelector("#seedButton"),
+  mobileQuickAddButton: document.querySelector("#mobileQuickAddButton"),
   copyShareButton: document.querySelector("#copyShareButton"),
   posterButton: document.querySelector("#posterButton"),
   posterDialog: document.querySelector("#posterDialog"),
@@ -151,6 +224,7 @@ async function bootstrap() {
   bindEvents();
   render();
   await loadMapData();
+  await migrateLegacyPhotos();
   render();
 }
 
@@ -169,7 +243,7 @@ function hydrateFromUrl() {
   if (!shared) return;
 
   try {
-    const decoded = JSON.parse(decodeURIComponent(escape(window.atob(shared))));
+    const decoded = JSON.parse(base64UrlDecode(shared));
     if (!decoded.cities) return;
     state.cities = Object.fromEntries(
       Object.entries(decoded.cities).map(([name, city]) => [name, normalizeCity(city)])
@@ -247,6 +321,12 @@ function bindEvents() {
     render();
   });
 
+  document.querySelectorAll(".sidebar-tab").forEach((button) => {
+    button.addEventListener("click", () => {
+      activateSidebarTab(button.dataset.sidebarTab);
+    });
+  });
+
   document.querySelectorAll(".segment").forEach((button) => {
     button.addEventListener("click", () => {
       state.filter = button.dataset.filter;
@@ -287,7 +367,7 @@ function bindEvents() {
     const city = getSelectedCity();
     if (!city || files.length === 0) return;
 
-    const photos = await Promise.all(files.slice(0, 8).map(readImageFile));
+    const photos = await Promise.all(files.slice(0, 8).map(storeCompressedImage));
     city.photos = [...(city.photos || []), ...photos].slice(-12);
     saveState();
     render();
@@ -295,14 +375,33 @@ function bindEvents() {
   });
 
   elements.removeCityButton.addEventListener("click", () => {
-    if (!state.selectedCity) return;
-    delete state.cities[state.selectedCity];
+    const city = getSelectedCity();
+    if (!city) return;
+    deletedSnapshot = { city: structuredClone(city), selectedCity: state.selectedCity };
+    delete state.cities[city.name];
     state.selectedCity = null;
     saveState();
     render();
+    showToast(`已移除 ${city.name}`, {
+      label: "撤销",
+      onClick: () => {
+        if (!deletedSnapshot) return;
+        state.cities[deletedSnapshot.city.name] = deletedSnapshot.city;
+        state.selectedCity = deletedSnapshot.selectedCity;
+        deletedSnapshot = null;
+        saveState();
+        render();
+      },
+      onExpire: finalizeDeletedCity
+    });
   });
 
   elements.seedButton.addEventListener("click", seedDemoRoute);
+  elements.mobileQuickAddButton?.addEventListener("click", () => {
+    activateSidebarTab("add");
+    elements.cityForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => elements.cityName.focus({ preventScroll: true }), 350);
+  });
   elements.quickNoteButton.addEventListener("click", copySelectedCaption);
   elements.copyCaptionButton.addEventListener("click", copySelectedCaption);
   elements.copyShareButton.addEventListener("click", copyShareLink);
@@ -337,6 +436,7 @@ function normalizeCity(city) {
     name: city.name,
     lon: Number(city.lon || catalogCity.lon || fallback.lon),
     lat: Number(city.lat || catalogCity.lat || fallback.lat),
+    province: city.province || catalogCity.province || CITY_PROVINCES[city.name] || "自定义",
     icon: normalizeIcon(city.icon || catalogCity.icon || "custom"),
     status: city.status || "visited",
     title: city.title || defaultTitle(city.name, city.status || "visited"),
@@ -425,9 +525,9 @@ function renderMapCanvas() {
   ctx.clearRect(0, 0, rect.width, rect.height);
 
   const gradient = ctx.createLinearGradient(0, 0, rect.width, rect.height);
-  gradient.addColorStop(0, "#fff7f6");
+  gradient.addColorStop(0, "#fffefd");
   gradient.addColorStop(0.52, "#ffffff");
-  gradient.addColorStop(1, "#fff0e7");
+  gradient.addColorStop(1, "#f7efe6");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, rect.width, rect.height);
 
@@ -441,9 +541,9 @@ function renderMapCanvas() {
     y: rect.height * 0.05,
     width: rect.width * 0.92,
     height: rect.height * 0.86,
-    fill: "#fff2f4",
-    stroke: "#ffd0d8",
-    highlightedFill: "#ffe2e7"
+    fill: "#fff7f1",
+    stroke: "#eadbd0",
+    highlightedFill: "#ffe4e8"
   });
 }
 
@@ -457,6 +557,7 @@ function renderCityPins() {
       const matches = cityMatchesFilter(city);
       const point = projectCity(city);
       const classes = ["city-pin", status];
+      const [pinA, pinB] = saved ? STATUS_THEMES[status] || STATUS_THEMES.visited : ICON_THEMES[city.icon] || ICON_THEMES.custom;
       classes.push(saved ? "saved" : "catalog");
       if (state.selectedCity === city.name) classes.push("active");
       if (!matches) classes.push("filtered");
@@ -464,7 +565,7 @@ function renderCityPins() {
       return `
         <button
           class="${classes.join(" ")}"
-          style="left:${point.x}px;top:${point.y}px"
+          style="left:${point.x}px;top:${point.y}px;--pin-a:${pinA};--pin-b:${pinB}"
           title="${escapeHtml(city.name)}"
           aria-label="${escapeHtml(city.name)}，${STATUS_LABELS[status]}"
           data-city="${escapeHtml(city.name)}"
@@ -478,6 +579,12 @@ function renderCityPins() {
     .join("");
 
   elements.cityLayer.querySelectorAll(".city-pin").forEach((pin) => {
+    pin.addEventListener("mouseenter", () => {
+      const name = pin.dataset.city;
+      const city = state.cities[name] || findCatalogCity(name) || createCustomCity(name);
+      showMapTooltip(city, pin);
+    });
+    pin.addEventListener("mouseleave", hideMapTooltip);
     pin.addEventListener("click", () => {
       const name = pin.dataset.city;
       if (!state.cities[name]) {
@@ -487,6 +594,9 @@ function renderCityPins() {
       state.selectedCity = name;
       saveState();
       render();
+      if (window.innerWidth <= 1100) {
+        elements.cityDetails.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   });
 
@@ -525,10 +635,18 @@ function cityMatchesFilter(city) {
 
 function renderStats() {
   const cities = Object.values(state.cities);
-  elements.visitedCount.textContent = cities.filter((city) => city.status === "visited").length;
-  elements.plannedCount.textContent = cities.filter((city) => city.status === "planned").length;
-  elements.photoCount.textContent = cities.reduce((sum, city) => sum + (city.photos?.length || 0), 0);
-  elements.noteCount.textContent = cities.filter((city) => city.notes || city.title).length;
+  const visitedCount = cities.filter((city) => city.status === "visited").length;
+  const plannedCount = cities.filter((city) => city.status === "planned").length;
+  const photoCount = cities.reduce((sum, city) => sum + (city.photos?.length || 0), 0);
+  const noteCount = cities.filter((city) => city.notes || city.title).length;
+  setText(elements.visitedCount, visitedCount);
+  setText(elements.plannedCount, plannedCount);
+  setText(elements.photoCount, photoCount);
+  setText(elements.noteCount, noteCount);
+  setText(elements.mobileVisitedCount, visitedCount);
+  setText(elements.mobilePlannedCount, plannedCount);
+  setText(elements.mobilePhotoCount, photoCount);
+  setText(elements.mobileNoteCount, noteCount);
 
   const topCity = cities.find((city) => city.favorite) || cities[0];
   elements.heroText.textContent = topCity
@@ -573,7 +691,7 @@ function renderDetails() {
         .map(
           (photo, index) => `
             <div class="photo-tile">
-              <img src="${photo}" alt="${escapeHtml(city.name)}旅行照片 ${index + 1}" />
+              ${photoSrc(photo) ? `<img src="${photoSrc(photo)}" alt="${escapeHtml(city.name)}旅行照片 ${index + 1}" />` : `<div class="photo-placeholder">加载中</div>`}
               <button type="button" data-photo-index="${index}" aria-label="删除照片">×</button>
             </div>
           `
@@ -583,11 +701,14 @@ function renderDetails() {
 
   elements.albumGrid.querySelectorAll("button[data-photo-index]").forEach((button) => {
     button.addEventListener("click", () => {
-      city.photos.splice(Number(button.dataset.photoIndex), 1);
+      const [removed] = city.photos.splice(Number(button.dataset.photoIndex), 1);
+      removeStoredPhoto(removed);
       saveState();
       render();
     });
   });
+
+  ensureCityPhotos(city);
 }
 
 function renderFilterControls() {
@@ -607,24 +728,37 @@ function renderFeed() {
     : `<div class="empty-feed">还没有旅行笔记。先点亮一座城市，或者点击左侧示例按钮。</div>`;
 
   elements.feedGrid.querySelectorAll("[data-feed-city]").forEach((card) => {
-    card.addEventListener("click", () => {
+    const selectCard = () => {
       state.selectedCity = card.dataset.feedCity;
       saveState();
       render();
+      if (window.innerWidth <= 1100) {
+        elements.cityDetails.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+    card.addEventListener("click", selectCard);
+    card.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      selectCard();
     });
   });
+
+  cities.forEach(ensureCityPhotos);
 }
 
 function renderNoteCard(city) {
-  const cover = city.photos?.[0]
-    ? `<img src="${city.photos[0]}" alt="${escapeHtml(city.name)}封面" />`
+  const coverPhoto = city.photos?.[0] ? photoSrc(city.photos[0]) : "";
+  const cover = coverPhoto
+    ? `<img src="${coverPhoto}" alt="${escapeHtml(city.name)}封面" />`
     : badgeSvg(city.icon || "custom");
   const text = city.notes || city.plan || makeCaption(city, { compact: true });
   const likes = 18 + city.name.length * 7 + (city.photos?.length || 0) * 12 + (city.favorite ? 66 : 0);
+  const [coverA, coverB] = ICON_THEMES[city.icon] || ICON_THEMES.custom;
 
   return `
     <article class="note-card" data-feed-city="${escapeHtml(city.name)}" tabindex="0">
-      <div class="note-cover">${cover}</div>
+      <div class="note-cover" style="--cover-a:${coverA};--cover-b:${coverB}">${cover}</div>
       <div class="note-body">
         <h3 class="note-title">${escapeHtml(city.title || defaultTitle(city.name, city.status))}</h3>
         <p class="note-text">${escapeHtml(text)}</p>
@@ -691,13 +825,128 @@ function seedDemoRoute() {
   showToast("已生成一组精细地图示例笔记。");
 }
 
-function readImageFile(file) {
+async function storeCompressedImage(file) {
+  const dataUrl = await compressImage(file);
+  return storeDataUrl(dataUrl);
+}
+
+async function storeDataUrl(dataUrl) {
+  const id = `photo-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  photoCache.set(id, dataUrl);
+  try {
+    await putPhoto(id, dataUrl);
+    return id;
+  } catch {
+    showToast("照片存储空间不可用，已临时保存在本次会话。");
+    return dataUrl;
+  }
+}
+
+async function migrateLegacyPhotos() {
+  let changed = false;
+  for (const city of Object.values(state.cities)) {
+    const migrated = [];
+    for (const photo of city.photos || []) {
+      if (String(photo).startsWith("data:")) {
+        migrated.push(await storeDataUrl(photo));
+        changed = true;
+      } else {
+        migrated.push(photo);
+      }
+    }
+    city.photos = migrated;
+  }
+  if (changed) saveState();
+}
+
+function compressImage(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const maxSide = 1280;
+        const ratio = Math.min(1, maxSide / Math.max(image.width, image.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * ratio));
+        canvas.height = Math.max(1, Math.round(image.height * ratio));
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.78));
+      };
+      image.onerror = reject;
+      image.src = reader.result;
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function photoSrc(photoRef) {
+  if (!photoRef) return "";
+  if (String(photoRef).startsWith("data:")) return photoRef;
+  return photoCache.get(photoRef) || "";
+}
+
+function ensureCityPhotos(city) {
+  (city.photos || []).forEach((photoRef) => {
+    if (!photoRef || String(photoRef).startsWith("data:") || photoCache.has(photoRef) || pendingPhotoLoads.has(photoRef)) return;
+    pendingPhotoLoads.add(photoRef);
+    getPhoto(photoRef)
+      .then((dataUrl) => {
+        if (dataUrl) {
+          photoCache.set(photoRef, dataUrl);
+          render();
+        }
+      })
+      .finally(() => pendingPhotoLoads.delete(photoRef));
+  });
+}
+
+function openPhotoDb() {
+  if (!("indexedDB" in window)) return Promise.reject(new Error("IndexedDB unavailable"));
+  if (photoDbPromise) return photoDbPromise;
+  photoDbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(PHOTO_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(PHOTO_STORE_NAME);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  return photoDbPromise;
+}
+
+async function putPhoto(id, dataUrl) {
+  const db = await openPhotoDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PHOTO_STORE_NAME, "readwrite");
+    tx.objectStore(PHOTO_STORE_NAME).put(dataUrl, id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getPhoto(id) {
+  const db = await openPhotoDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PHOTO_STORE_NAME, "readonly");
+    const request = tx.objectStore(PHOTO_STORE_NAME).get(id);
+    request.onsuccess = () => resolve(request.result || "");
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function removeStoredPhoto(photoRef) {
+  if (!photoRef || String(photoRef).startsWith("data:")) return;
+  photoCache.delete(photoRef);
+  try {
+    const db = await openPhotoDb();
+    const tx = db.transaction(PHOTO_STORE_NAME, "readwrite");
+    tx.objectStore(PHOTO_STORE_NAME).delete(photoRef);
+  } catch {
+    // Non-critical cleanup.
+  }
 }
 
 async function copySelectedCaption() {
@@ -737,6 +986,7 @@ async function copyShareLink() {
           name: city.name,
           lon: city.lon,
           lat: city.lat,
+          province: city.province,
           icon: city.icon,
           status: city.status,
           title: city.title,
@@ -748,8 +998,8 @@ async function copyShareLink() {
       ])
     )
   };
-  const encoded = window.btoa(unescape(encodeURIComponent(JSON.stringify(shareState))));
-  const url = `${window.location.origin}${window.location.pathname}?map=${encoded}`;
+  const encoded = base64UrlEncode(JSON.stringify(shareState));
+  const url = `${window.location.origin}${window.location.pathname}?map=${encodeURIComponent(encoded)}`;
   await copyText(url);
   showToast("地图链接已复制。");
 }
@@ -886,44 +1136,7 @@ function drawGeoJson(ctx, geojson, bounds, target) {
 
 function provinceHasSavedCity(feature, savedNames) {
   const province = feature.properties?.name || "";
-  return Object.values(state.cities).some((city) => savedNames.has(city.name) && provinceContainsCity(province, city.name));
-}
-
-function provinceContainsCity(province, cityName) {
-  const groups = {
-    北京: ["北京"],
-    天津: ["天津"],
-    河北: [],
-    山西: [],
-    内蒙古: ["呼和浩特"],
-    辽宁: ["沈阳", "大连"],
-    吉林: [],
-    黑龙江: ["哈尔滨"],
-    上海: ["上海"],
-    江苏: ["南京", "苏州"],
-    浙江: ["杭州"],
-    安徽: ["黄山"],
-    福建: ["厦门", "福州", "泉州"],
-    江西: [],
-    山东: ["济南", "青岛"],
-    河南: ["郑州", "洛阳"],
-    湖北: ["武汉"],
-    湖南: ["长沙"],
-    广东: ["广州", "深圳", "珠海"],
-    广西: ["桂林"],
-    海南: ["海口", "三亚"],
-    重庆: ["重庆"],
-    四川: ["成都"],
-    贵州: ["贵阳"],
-    云南: ["昆明", "大理", "丽江"],
-    西藏: ["拉萨"],
-    陕西: ["西安"],
-    甘肃: ["兰州", "敦煌"],
-    青海: [],
-    宁夏: ["银川"],
-    新疆: ["乌鲁木齐"]
-  };
-  return Object.entries(groups).some(([key, cities]) => province.includes(key) && cities.includes(cityName));
+  return Object.values(state.cities).some((city) => savedNames.has(city.name) && province.includes(city.province || ""));
 }
 
 function projectLonLat(lon, lat, bounds, target) {
@@ -943,8 +1156,8 @@ function projectLonLat(lon, lat, bounds, target) {
 function drawMapSkeleton(ctx, width, height, x = 0, y = 0) {
   ctx.save();
   ctx.translate(x, y);
-  ctx.fillStyle = "#fff2f4";
-  ctx.strokeStyle = "#ffd0d8";
+  ctx.fillStyle = "#fff7f1";
+  ctx.strokeStyle = "#eadbd0";
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.ellipse(width * 0.5, height * 0.48, width * 0.36, height * 0.28, -0.1, 0, Math.PI * 2);
@@ -978,7 +1191,7 @@ function badgeSvg(type) {
     sunrise: '<path d="M3 18h18"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 5v3"/><path d="M5 11l2 2"/><path d="M19 11l-2 2"/>',
     custom: '<path d="M12 21s6-5.1 6-11a6 6 0 0 0-12 0c0 5.9 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/>'
   };
-  return `<svg class="badge-icon" viewBox="0 0 24 24" aria-hidden="true">${icons[type] || icons.custom}</svg>`;
+  return `<svg class="badge-icon badge-${type || "custom"}" viewBox="0 0 24 24" aria-hidden="true">${icons[type] || icons.custom}</svg>`;
 }
 
 function roundRect(ctx, x, y, width, height, radius) {
@@ -1027,11 +1240,78 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function showToast(message) {
-  elements.toast.textContent = message;
+function base64UrlEncode(text) {
+  return window
+    .btoa(unescape(encodeURIComponent(text)))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
+}
+
+function base64UrlDecode(value) {
+  const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  return decodeURIComponent(escape(window.atob(padded)));
+}
+
+function setText(element, value) {
+  if (element) element.textContent = value;
+}
+
+function showMapTooltip(city, pin) {
+  if (!elements.mapTooltip) return;
+  const status = state.cities[city.name]?.status || "候选城市";
+  elements.mapTooltip.innerHTML = `<strong>${escapeHtml(city.name)}</strong><span>${escapeHtml(STATUS_LABELS[status] || status)} · ${(city.tags || []).slice(0, 2).join(" / ")}</span>`;
+  elements.mapTooltip.style.left = pin.style.left;
+  elements.mapTooltip.style.top = pin.style.top;
+  elements.mapTooltip.classList.add("visible");
+}
+
+function hideMapTooltip() {
+  elements.mapTooltip?.classList.remove("visible");
+}
+
+function activateSidebarTab(target) {
+  document.querySelectorAll(".sidebar-tab").forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.sidebarTab === target);
+  });
+  document.querySelectorAll(".sidebar-tab-panel").forEach((panel) => {
+    panel.classList.toggle("active-panel", panel.dataset.panel === target);
+  });
+}
+
+function finalizeDeletedCity() {
+  if (!deletedSnapshot) return;
+  (deletedSnapshot.city.photos || []).forEach(removeStoredPhoto);
+  deletedSnapshot = null;
+}
+
+function showToast(message, action) {
+  if (showToast.expireHandler) {
+    showToast.expireHandler();
+    showToast.expireHandler = null;
+  }
+  elements.toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+  elements.toast.classList.toggle("has-action", Boolean(action));
+  if (action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = action.label;
+    button.addEventListener("click", () => {
+      action.onClick();
+      showToast.expireHandler = null;
+      elements.toast.classList.remove("visible", "has-action");
+    });
+    elements.toast.appendChild(button);
+  }
   elements.toast.classList.add("visible");
   window.clearTimeout(showToast.timer);
+  showToast.expireHandler = action?.onExpire || null;
   showToast.timer = window.setTimeout(() => {
-    elements.toast.classList.remove("visible");
-  }, 2400);
+    elements.toast.classList.remove("visible", "has-action");
+    if (showToast.expireHandler) {
+      showToast.expireHandler();
+      showToast.expireHandler = null;
+    }
+  }, action ? 5200 : 2400);
 }
