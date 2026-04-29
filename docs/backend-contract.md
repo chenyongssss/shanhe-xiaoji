@@ -48,3 +48,30 @@
 ```
 
 服务端应该根据登录用户校验 owner/editor 权限。
+
+## POST /share-links
+
+创建可撤销的分享链接。前端永远发送 `allowPrivateNotes: false`。
+
+```json
+{
+  "mapId": "default",
+  "permission": "view",
+  "expiresInDays": 7,
+  "allowPhotos": false,
+  "allowPrivateNotes": false
+}
+```
+
+返回：
+
+```json
+{
+  "token": "opaque-share-token",
+  "url": "https://app.example.com/share/opaque-share-token"
+}
+```
+
+## GET /share-links/:token
+
+返回经过权限过滤后的地图状态。服务端必须移除私密字段，例如 `budget`、`notes`、`plan` 和未公开照片。

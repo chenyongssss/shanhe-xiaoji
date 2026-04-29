@@ -20,8 +20,22 @@ create table if not exists public.map_members (
   primary key (map_id, user_id)
 );
 
+create table if not exists public.share_links (
+  id uuid primary key default gen_random_uuid(),
+  map_id uuid not null references public.maps(id) on delete cascade,
+  token text not null unique,
+  permission text not null default 'view' check (permission in ('view', 'comment', 'edit')),
+  allow_photos boolean not null default false,
+  allow_private_notes boolean not null default false,
+  expires_at timestamptz,
+  revoked_at timestamptz,
+  created_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
 alter table public.maps enable row level security;
 alter table public.map_members enable row level security;
+alter table public.share_links enable row level security;
 
 create policy "owners can manage maps"
   on public.maps
@@ -65,6 +79,26 @@ create policy "members can read memberships"
       select 1
       from public.maps
       where maps.id = map_members.map_id
+        and maps.owner_id = auth.uid()
+    )
+  );
+
+create policy "owners can manage share links"
+  on public.share_links
+  for all
+  using (
+    exists (
+      select 1
+      from public.maps
+      where maps.id = share_links.map_id
+        and maps.owner_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from public.maps
+      where maps.id = share_links.map_id
         and maps.owner_id = auth.uid()
     )
   );

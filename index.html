@@ -120,11 +120,33 @@
           <div class="panel-title">
             <h2>分享</h2>
           </div>
+          <div class="share-settings">
+            <label>
+              权限
+              <select id="sharePermission">
+                <option value="view">仅查看</option>
+                <option value="comment">可评论</option>
+                <option value="edit">可协作编辑</option>
+              </select>
+            </label>
+            <label>
+              有效期
+              <select id="shareExpiry">
+                <option value="7">7 天</option>
+                <option value="30">30 天</option>
+                <option value="0">长期有效</option>
+              </select>
+            </label>
+            <label class="toggle-row">
+              <input id="sharePhotos" type="checkbox" />
+              <span>允许分享公开照片</span>
+            </label>
+          </div>
           <div class="share-actions">
             <button class="secondary-button" id="copyShareButton" type="button">复制地图链接</button>
             <button class="secondary-button" id="posterButton" type="button">生成小记海报</button>
           </div>
-          <p class="hint">分享链接不包含照片原图和私密正文，只同步城市、状态、图标和标签。</p>
+          <p class="hint">云端分享链接由 token 管理，可撤销和过期；本地兜底链接不包含照片原图、预算、攻略正文和下一次计划。</p>
         </section>
       </aside>
 

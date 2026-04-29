@@ -209,6 +209,9 @@ const elements = {
   copyCaptionButton: document.querySelector("#copyCaptionButton"),
   seedButton: document.querySelector("#seedButton"),
   mobileQuickAddButton: document.querySelector("#mobileQuickAddButton"),
+  sharePermission: document.querySelector("#sharePermission"),
+  shareExpiry: document.querySelector("#shareExpiry"),
+  sharePhotos: document.querySelector("#sharePhotos"),
   copyShareButton: document.querySelector("#copyShareButton"),
   posterButton: document.querySelector("#posterButton"),
   posterDialog: document.querySelector("#posterDialog"),
@@ -1125,11 +1128,47 @@ function defaultTitle(name, status) {
 }
 
 async function copyShareLink() {
+  if (isCloudConfigured() && cloudHydrated) {
+    try {
+      const url = await createServerShareLink();
+      await copyText(url);
+      showToast("云端分享链接已复制。");
+      return;
+    } catch {
+      showToast("云端分享失败，已生成本地安全链接。");
+    }
+  }
+
   const shareState = portableState({ includePrivate: false });
   const encoded = base64UrlEncode(JSON.stringify(shareState));
   const url = `${window.location.origin}${window.location.pathname}?map=${encodeURIComponent(encoded)}`;
   await copyText(url);
   showToast("地图链接已复制。");
+}
+
+async function createServerShareLink() {
+  const expiresInDays = Number(elements.shareExpiry?.value || 7);
+  const response = await fetch(`${cloudApiBase()}/share-links`, {
+    method: "POST",
+    headers: cloudHeaders(),
+    body: JSON.stringify({
+      mapId: currentMapId(),
+      permission: elements.sharePermission?.value || "view",
+      expiresInDays,
+      allowPhotos: Boolean(elements.sharePhotos?.checked),
+      allowPrivateNotes: false
+    })
+  });
+
+  if (!response.ok) throw new Error(`Share link failed: ${response.status}`);
+  const payload = await response.json();
+  if (payload.url) return payload.url;
+  if (payload.token) return `${window.location.origin}/share/${encodeURIComponent(payload.token)}`;
+  throw new Error("Share response did not include a token.");
+}
+
+function currentMapId() {
+  return cloudConfig.mapId || localStorage.getItem(CLOUD_MAP_KEY) || "default";
 }
 
 async function copyText(text) {

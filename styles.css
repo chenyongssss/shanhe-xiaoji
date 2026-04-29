@@ -228,10 +228,27 @@ p {
 }
 
 .city-form,
+.share-settings,
 .share-actions {
   display: grid;
   gap: 12px;
   margin-top: 14px;
+}
+
+.share-settings {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.toggle-row {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 9px;
+}
+
+.toggle-row input {
+  width: 18px;
+  height: 18px;
 }
 
 .form-row,
