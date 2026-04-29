@@ -107,6 +107,8 @@ const STORAGE_KEY = "china-travel-map-v3";
 const LEGACY_KEYS = ["china-travel-map-v2", "china-travel-map-v1"];
 const PHOTO_DB_NAME = "china-travel-map-photos";
 const PHOTO_STORE_NAME = "photos";
+const CLOUD_TOKEN_KEY = "shanhe-cloud-token";
+const CLOUD_MAP_KEY = "shanhe-cloud-map-id";
 const CITY_PROVINCES = {
   北京: "北京",
   天津: "天津",
@@ -154,6 +156,9 @@ let deletedSnapshot = null;
 let photoDbPromise = null;
 const photoCache = new Map();
 const pendingPhotoLoads = new Set();
+let cloudConfig = { ...(window.SHANHE_CONFIG || {}) };
+let cloudSaveTimer = null;
+let cloudHydrated = false;
 let state = {
   cities: {},
   selectedCity: null,
@@ -211,12 +216,14 @@ const elements = {
   posterCanvas: document.querySelector("#posterCanvas"),
   feedGrid: document.querySelector("#feedGrid"),
   feedCount: document.querySelector("#feedCount"),
+  cloudSyncStatus: document.querySelector("#cloudSyncStatus"),
   toast: document.querySelector("#toast")
 };
 
 bootstrap();
 
 async function bootstrap() {
+  await loadRuntimeConfig();
   hydrateFromUrl();
   hydrateFromStorage();
   populateCityOptions();
@@ -225,6 +232,7 @@ async function bootstrap() {
   render();
   await loadMapData();
   await migrateLegacyPhotos();
+  await hydrateFromCloud();
   render();
 }
 
@@ -235,6 +243,17 @@ async function loadMapData() {
     mapBounds = getGeoBounds(mapGeoJson);
   } catch {
     showToast("本地地图数据加载失败，已保留城市点位。");
+  }
+}
+
+async function loadRuntimeConfig() {
+  try {
+    const response = await fetch("./config.json", { cache: "no-store" });
+    if (!response.ok) return;
+    const fileConfig = await response.json();
+    cloudConfig = { ...cloudConfig, ...fileConfig };
+  } catch {
+    // Cloud config is optional; local-first mode is the default.
   }
 }
 
@@ -277,7 +296,135 @@ function safeParse(value) {
 }
 
 function saveState() {
+  persistLocalState();
+  scheduleCloudSave();
+}
+
+function persistLocalState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+async function hydrateFromCloud() {
+  if (!isCloudConfigured()) {
+    setCloudStatus("本地模式");
+    return;
+  }
+
+  const mapId = cloudConfig.mapId || localStorage.getItem(CLOUD_MAP_KEY) || "default";
+  setCloudStatus("云端同步中");
+
+  try {
+    const response = await fetch(`${cloudApiBase()}/maps/${encodeURIComponent(mapId)}`, {
+      headers: cloudHeaders()
+    });
+
+    if (response.status === 404) {
+      cloudHydrated = true;
+      localStorage.setItem(CLOUD_MAP_KEY, mapId);
+      setCloudStatus("云端已就绪");
+      scheduleCloudSave();
+      return;
+    }
+
+    if (!response.ok) throw new Error(`Cloud load failed: ${response.status}`);
+
+    const payload = await response.json();
+    const nextState = payload.state || payload;
+    if (nextState?.cities) {
+      state = {
+        ...state,
+        ...nextState,
+        cities: Object.fromEntries(
+          Object.entries(nextState.cities).map(([name, city]) => [name, normalizeCity(city)])
+        )
+      };
+      persistLocalState();
+    }
+
+    cloudHydrated = true;
+    localStorage.setItem(CLOUD_MAP_KEY, payload.id || mapId);
+    setCloudStatus("云端已同步");
+  } catch {
+    cloudHydrated = true;
+    setCloudStatus("云端不可用");
+  }
+}
+
+function scheduleCloudSave() {
+  if (!isCloudConfigured() || !cloudHydrated) return;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(saveStateToCloud, 800);
+}
+
+async function saveStateToCloud() {
+  const mapId = cloudConfig.mapId || localStorage.getItem(CLOUD_MAP_KEY) || "default";
+  setCloudStatus("保存中");
+
+  try {
+    const response = await fetch(`${cloudApiBase()}/maps/${encodeURIComponent(mapId)}`, {
+      method: "PUT",
+      headers: cloudHeaders(),
+      body: JSON.stringify({
+        title: "山河小记",
+        state: portableState({ includePrivate: true })
+      })
+    });
+
+    if (!response.ok) throw new Error(`Cloud save failed: ${response.status}`);
+    setCloudStatus("云端已同步");
+  } catch {
+    setCloudStatus("仅本地保存");
+  }
+}
+
+function portableState(options = {}) {
+  const includePrivate = Boolean(options.includePrivate);
+  return {
+    cities: Object.fromEntries(
+      Object.entries(state.cities).map(([name, city]) => [
+        name,
+        {
+          name: city.name,
+          lon: city.lon,
+          lat: city.lat,
+          province: city.province,
+          icon: city.icon,
+          status: city.status,
+          title: city.title,
+          tags: city.tags,
+          days: city.days,
+          budget: includePrivate ? city.budget : "",
+          notes: includePrivate ? city.notes : "",
+          plan: includePrivate ? city.plan : "",
+          favorite: city.favorite
+        }
+      ])
+    ),
+    selectedCity: state.selectedCity,
+    filter: state.filter,
+    query: state.query
+  };
+}
+
+function isCloudConfigured() {
+  return Boolean(cloudApiBase());
+}
+
+function cloudApiBase() {
+  return String(cloudConfig.apiBaseUrl || "").replace(/\/$/, "");
+}
+
+function cloudHeaders() {
+  const token = cloudConfig.accessToken || localStorage.getItem(CLOUD_TOKEN_KEY);
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
+function setCloudStatus(label) {
+  if (!elements.cloudSyncStatus) return;
+  elements.cloudSyncStatus.textContent = label;
 }
 
 function populateCityOptions() {
@@ -978,26 +1125,7 @@ function defaultTitle(name, status) {
 }
 
 async function copyShareLink() {
-  const shareState = {
-    cities: Object.fromEntries(
-      Object.entries(state.cities).map(([name, city]) => [
-        name,
-        {
-          name: city.name,
-          lon: city.lon,
-          lat: city.lat,
-          province: city.province,
-          icon: city.icon,
-          status: city.status,
-          title: city.title,
-          tags: city.tags,
-          days: city.days,
-          budget: city.budget,
-          favorite: city.favorite
-        }
-      ])
-    )
-  };
+  const shareState = portableState({ includePrivate: false });
   const encoded = base64UrlEncode(JSON.stringify(shareState));
   const url = `${window.location.origin}${window.location.pathname}?map=${encodeURIComponent(encoded)}`;
   await copyText(url);
