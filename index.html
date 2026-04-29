@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>山河小记 - 中国旅行地图</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="旅行地图编辑区">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">记</div>
+          <div>
+            <h1>山河小记</h1>
+            <p>把去过的城市做成一张好看的旅行主页</p>
+          </div>
+        </div>
+
+        <section class="stats-grid" aria-label="旅行统计">
+          <div class="stat-card">
+            <strong id="visitedCount">0</strong>
+            <span>已去</span>
+          </div>
+          <div class="stat-card">
+            <strong id="plannedCount">0</strong>
+            <span>计划</span>
+          </div>
+          <div class="stat-card">
+            <strong id="photoCount">0</strong>
+            <span>照片</span>
+          </div>
+          <div class="stat-card">
+            <strong id="noteCount">0</strong>
+            <span>笔记</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>添加旅行城市</h2>
+            <button class="icon-button" id="seedButton" title="生成示例" aria-label="生成示例">↗</button>
+          </div>
+          <form id="cityForm" class="city-form">
+            <label>
+              城市
+              <input id="cityName" name="cityName" list="cityOptions" placeholder="例如：泉州" autocomplete="off" required />
+              <datalist id="cityOptions"></datalist>
+            </label>
+            <div class="form-row">
+              <label>
+                徽章
+                <select id="cityIcon" name="cityIcon">
+                  <option value="heritage">古城</option>
+                  <option value="nature">山川</option>
+                  <option value="coast">海滨</option>
+                  <option value="food">美食</option>
+                  <option value="museum">博物馆</option>
+                  <option value="flower">花季</option>
+                  <option value="photo">摄影</option>
+                  <option value="slow">松弛</option>
+                  <option value="snow">冰雪</option>
+                  <option value="desert">沙漠</option>
+                  <option value="sunrise">日出</option>
+                  <option value="custom">自定义</option>
+                </select>
+              </label>
+              <label>
+                状态
+                <select id="cityStatus" name="cityStatus">
+                  <option value="visited">已旅行</option>
+                  <option value="planned">计划中</option>
+                  <option value="wishlist">想去</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              主题
+              <select id="themeInput" name="themeInput">
+                <option value="Citywalk">Citywalk</option>
+                <option value="美食探店">美食探店</option>
+                <option value="古城慢游">古城慢游</option>
+                <option value="山海路线">山海路线</option>
+                <option value="博物馆">博物馆</option>
+                <option value="亲子旅行">亲子旅行</option>
+                <option value="摄影机位">摄影机位</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit">点亮城市</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>浏览</h2>
+          </div>
+          <input id="searchInput" class="search-input" placeholder="搜索城市 / 标签" />
+          <div class="segmented" role="group" aria-label="城市状态筛选">
+            <button class="segment active" data-filter="all" type="button">全部</button>
+            <button class="segment" data-filter="visited" type="button">已去</button>
+            <button class="segment" data-filter="planned" type="button">计划</button>
+            <button class="segment" data-filter="wishlist" type="button">想去</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>路线模板</h2>
+          </div>
+          <div class="template-grid" id="templateGrid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>分享</h2>
+          </div>
+          <div class="share-actions">
+            <button class="secondary-button" id="copyShareButton" type="button">复制地图链接</button>
+            <button class="secondary-button" id="posterButton" type="button">生成小记海报</button>
+          </div>
+          <p class="hint">分享链接不包含照片原图和私密正文，只同步城市、状态、图标和标签。</p>
+        </section>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Travel Map · Local First</p>
+            <h2>我的中国旅行灵感图</h2>
+          </div>
+          <div class="legend" aria-label="地图图例">
+            <span><i class="dot visited"></i>已旅行</span>
+            <span><i class="dot planned"></i>计划中</span>
+            <span><i class="dot wishlist"></i>想去</span>
+          </div>
+        </header>
+
+        <section class="hero-card">
+          <div>
+            <p>今日灵感</p>
+            <strong id="heroText">点亮第一座城市，生成你的旅行笔记流。</strong>
+          </div>
+          <div class="persona-pill" id="personaName">旅行人格生成中</div>
+          <button class="ghost-button" id="quickNoteButton" type="button">生成文案</button>
+        </section>
+
+        <section class="map-section" aria-label="中国旅行地图">
+          <div class="map-board" id="mapBoard">
+            <canvas id="mapCanvas" class="map-canvas" aria-label="精细中国旅行地图"></canvas>
+            <div id="cityLayer" class="city-layer"></div>
+            <div class="map-source">本地矢量地图 · 城市点位按经纬度投影</div>
+          </div>
+        </section>
+
+        <section class="content-grid">
+          <section class="city-drawer" aria-label="城市详情">
+            <div class="drawer-empty" id="emptyState">
+              <h3>选择城市，开始写旅行小记</h3>
+              <p>地图上的每座城市都可以拥有照片、标签、攻略、计划和一张可分享的种草卡片。</p>
+            </div>
+
+            <div class="drawer-content hidden" id="cityDetails">
+              <div class="drawer-header">
+                <div>
+                  <p class="eyebrow" id="detailStatus">已旅行</p>
+                  <h3 id="detailTitle">北京</h3>
+                </div>
+                <div class="drawer-actions">
+                  <button class="icon-button" id="favoriteButton" title="收藏" aria-label="收藏">♡</button>
+                  <button class="icon-button danger" id="removeCityButton" title="移除城市" aria-label="移除城市">×</button>
+                </div>
+              </div>
+
+              <div class="detail-grid">
+                <label>
+                  状态
+                  <select id="detailStatusSelect">
+                    <option value="visited">已旅行</option>
+                    <option value="planned">计划中</option>
+                    <option value="wishlist">想去</option>
+                  </select>
+                </label>
+                <label>
+                  徽章
+                  <select id="detailIconSelect">
+                    <option value="heritage">古城</option>
+                    <option value="nature">山川</option>
+                    <option value="coast">海滨</option>
+                    <option value="food">美食</option>
+                    <option value="museum">博物馆</option>
+                    <option value="flower">花季</option>
+                    <option value="photo">摄影</option>
+                    <option value="slow">松弛</option>
+                    <option value="snow">冰雪</option>
+                    <option value="desert">沙漠</option>
+                    <option value="sunrise">日出</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                </label>
+                <label>
+                  天数
+                  <input id="daysInput" type="number" min="1" max="30" placeholder="3" />
+                </label>
+                <label>
+                  预算
+                  <input id="budgetInput" placeholder="例如：1200/人" />
+                </label>
+              </div>
+
+              <label class="full-label">
+                笔记标题
+                <input id="titleInput" placeholder="例如：三天两晚西安慢游路线" />
+              </label>
+              <label class="full-label">
+                标签
+                <input id="tagsInput" placeholder="Citywalk, 美食, 博物馆" />
+              </label>
+              <label class="full-label">
+                攻略 / 回忆
+                <textarea id="notesInput" rows="4" placeholder="写下推荐景点、餐厅、路线、避坑点或旅行回忆"></textarea>
+              </label>
+              <label class="full-label">
+                下一次计划
+                <textarea id="planInput" rows="3" placeholder="想补去的景点、季节、同行人、交通安排"></textarea>
+              </label>
+
+              <div class="album-header">
+                <h4>旅行相册</h4>
+                <label class="upload-button">
+                  上传照片
+                  <input id="photoInput" type="file" accept="image/*" multiple />
+                </label>
+              </div>
+              <div class="album-grid" id="albumGrid"></div>
+
+              <button class="primary-button" id="copyCaptionButton" type="button">复制小红书文案</button>
+            </div>
+          </section>
+
+          <section class="feed-panel" aria-label="旅行笔记流">
+            <div class="panel-title">
+              <h2>旅行笔记流</h2>
+              <span id="feedCount" class="feed-count">0 篇</span>
+            </div>
+            <div class="feed-grid" id="feedGrid"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="posterDialog" class="poster-dialog">
+      <div class="dialog-header">
+        <h3>小记海报</h3>
+        <button class="icon-button" id="closePosterButton" aria-label="关闭海报">×</button>
+      </div>
+      <canvas id="posterCanvas" width="1080" height="1440"></canvas>
+      <p class="hint">右键或长按海报即可保存图片。</p>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
