@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ff2442" />
     <title>山河小记 - 中国旅行地图</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -167,6 +169,8 @@
           <div class="share-actions">
             <button class="secondary-button" id="copyShareButton" type="button">复制地图链接</button>
             <button class="secondary-button" id="posterButton" type="button">生成小记海报</button>
+            <button class="secondary-button" id="exportDataButton" type="button">导出数据</button>
+            <button class="secondary-button danger-outline" id="clearLocalButton" type="button">清空本地</button>
           </div>
           <p class="hint">云端分享链接由 token 管理，可撤销和过期；本地兜底链接不包含照片原图、预算、攻略正文和下一次计划。</p>
         </section>

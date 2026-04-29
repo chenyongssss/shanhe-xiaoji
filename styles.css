@@ -361,6 +361,11 @@ textarea:focus {
   background: #fff9fa;
 }
 
+.danger-outline {
+  color: var(--red-dark);
+  border-color: rgba(255, 36, 66, 0.32);
+}
+
 .secondary-button:hover,
 .ghost-button:hover,
 .segment:hover,

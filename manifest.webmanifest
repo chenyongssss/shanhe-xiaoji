@@ -1,0 +1,10 @@
+{
+  "name": "山河小记",
+  "short_name": "山河小记",
+  "description": "为每个用户生成可分享、可协作的中国旅行地图。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f5f1",
+  "theme_color": "#ff2442",
+  "lang": "zh-CN"
+}

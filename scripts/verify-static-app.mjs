@@ -4,6 +4,7 @@ const requiredFiles = [
   "index.html",
   "app.js",
   "styles.css",
+  "manifest.webmanifest",
   "data/china.json"
 ];
 

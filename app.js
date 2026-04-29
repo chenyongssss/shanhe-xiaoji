@@ -219,6 +219,8 @@ const elements = {
   sharePhotos: document.querySelector("#sharePhotos"),
   copyShareButton: document.querySelector("#copyShareButton"),
   posterButton: document.querySelector("#posterButton"),
+  exportDataButton: document.querySelector("#exportDataButton"),
+  clearLocalButton: document.querySelector("#clearLocalButton"),
   posterDialog: document.querySelector("#posterDialog"),
   closePosterButton: document.querySelector("#closePosterButton"),
   posterCanvas: document.querySelector("#posterCanvas"),
@@ -563,6 +565,8 @@ function bindEvents() {
   elements.copyCaptionButton.addEventListener("click", copySelectedCaption);
   elements.copyShareButton.addEventListener("click", copyShareLink);
   elements.posterButton.addEventListener("click", openPoster);
+  elements.exportDataButton?.addEventListener("click", exportMapData);
+  elements.clearLocalButton?.addEventListener("click", clearLocalMapData);
   elements.closePosterButton.addEventListener("click", () => elements.posterDialog.close());
   window.addEventListener("resize", () => {
     renderMapCanvas();
@@ -1233,6 +1237,33 @@ async function copyText(text) {
   } catch {
     window.prompt("复制文本", text);
   }
+}
+
+function exportMapData() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: "山河小记",
+    version: "0.1.0",
+    state: portableState({ includePrivate: true })
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `shanhe-xiaoji-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+  showToast("地图数据已导出。");
+}
+
+function clearLocalMapData() {
+  const confirmed = window.confirm("确认清空本机保存的地图数据？云端数据不会被删除。");
+  if (!confirmed) return;
+  localStorage.removeItem(STORAGE_KEY);
+  LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+  state = { cities: {}, members: [], selectedCity: null, filter: "all", query: "" };
+  render();
+  showToast("本地地图数据已清空。");
 }
 
 function openPoster() {
