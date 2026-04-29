@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "python -m http.server 5173 --bind 127.0.0.1",
     "start": "python -m http.server 5173 --bind 127.0.0.1",
-    "build": "node scripts/verify-static-app.mjs"
+    "build": "node scripts/verify-static-app.mjs && node scripts/verify-api.mjs",
+    "check:api": "node scripts/verify-api.mjs"
   },
   "keywords": [
     "travel",

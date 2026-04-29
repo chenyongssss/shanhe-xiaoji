@@ -2,17 +2,30 @@
 
 前端在项目根目录发现 `config.json`，且其中存在 `apiBaseUrl` 时，会从本地优先模式切换到云同步模式。
 
+本项目已经在 `api/` 目录实现了 Vercel Serverless Functions 版本的后端 API。部署到 Vercel 后，推荐使用同源配置：
+
 ## 配置示例
 
 ```json
 {
-  "apiBaseUrl": "https://api.example.com",
+  "apiBaseUrl": "/api",
   "mapId": "default",
   "accessToken": ""
 }
 ```
 
 `accessToken` 可以不写，前端会优先读取浏览器中的 `shanhe-cloud-token`。后续接入 Supabase Auth 后，只需要把登录后的 JWT 放入同名 key。
+
+## 环境变量
+
+```text
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+PUBLIC_APP_URL
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` 只允许存在于 Vercel 后端环境变量中，不能写入任何前端配置文件。
 
 ## GET /maps/:mapId
 

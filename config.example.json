@@ -1,5 +1,5 @@
 {
-  "apiBaseUrl": "https://api.example.com",
+  "apiBaseUrl": "/api",
   "mapId": "default",
   "accessToken": ""
 }

@@ -30,10 +30,23 @@ npm.cmd run build
 
 ```json
 {
-  "apiBaseUrl": "https://api.example.com",
+  "apiBaseUrl": "/api",
   "mapId": "default",
   "accessToken": ""
 }
 ```
 
 后端 API 契约见 `docs/backend-contract.md`，Supabase 表结构见 `supabase/schema.sql`。
+
+## Vercel 环境变量
+
+在 Vercel Project Settings 里设置：
+
+```text
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+PUBLIC_APP_URL
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` 只用于 `api/` 服务端函数，不会发到浏览器。

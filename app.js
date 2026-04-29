@@ -234,8 +234,11 @@ bootstrap();
 
 async function bootstrap() {
   await loadRuntimeConfig();
-  hydrateFromUrl();
-  hydrateFromStorage();
+  const sharedFromServer = await hydrateFromShareRoute();
+  if (!sharedFromServer) {
+    hydrateFromUrl();
+    hydrateFromStorage();
+  }
   populateCityOptions();
   renderTemplateGrid();
   bindEvents();
@@ -264,6 +267,34 @@ async function loadRuntimeConfig() {
     cloudConfig = { ...cloudConfig, ...fileConfig };
   } catch {
     // Cloud config is optional; local-first mode is the default.
+  }
+
+  if (!cloudConfig.apiBaseUrl && window.location.pathname.startsWith("/share/")) {
+    cloudConfig.apiBaseUrl = "/api";
+  }
+}
+
+async function hydrateFromShareRoute() {
+  const match = window.location.pathname.match(/^\/share\/([^/]+)\/?$/);
+  if (!match || !cloudApiBase()) return false;
+
+  try {
+    const response = await fetch(`${cloudApiBase()}/share-links/${encodeURIComponent(match[1])}`);
+    if (!response.ok) throw new Error(`Share load failed: ${response.status}`);
+    const payload = await response.json();
+    if (!payload.state?.cities) return false;
+    state = {
+      ...state,
+      ...payload.state,
+      cities: Object.fromEntries(
+        Object.entries(payload.state.cities).map(([name, city]) => [name, normalizeCity(city)])
+      )
+    };
+    showToast("已载入云端分享地图。");
+    return true;
+  } catch {
+    showToast("分享链接已失效或无法访问。");
+    return false;
   }
 }
 
