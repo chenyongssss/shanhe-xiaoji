@@ -161,6 +161,7 @@ let cloudSaveTimer = null;
 let cloudHydrated = false;
 let state = {
   cities: {},
+  members: [],
   selectedCity: null,
   filter: "all",
   query: ""
@@ -209,6 +210,10 @@ const elements = {
   copyCaptionButton: document.querySelector("#copyCaptionButton"),
   seedButton: document.querySelector("#seedButton"),
   mobileQuickAddButton: document.querySelector("#mobileQuickAddButton"),
+  inviteEmail: document.querySelector("#inviteEmail"),
+  inviteRole: document.querySelector("#inviteRole"),
+  inviteMemberButton: document.querySelector("#inviteMemberButton"),
+  collaboratorList: document.querySelector("#collaboratorList"),
   sharePermission: document.querySelector("#sharePermission"),
   shareExpiry: document.querySelector("#shareExpiry"),
   sharePhotos: document.querySelector("#sharePhotos"),
@@ -404,6 +409,7 @@ function portableState(options = {}) {
       ])
     ),
     selectedCity: state.selectedCity,
+    members: state.members || [],
     filter: state.filter,
     query: state.query
   };
@@ -547,6 +553,7 @@ function bindEvents() {
   });
 
   elements.seedButton.addEventListener("click", seedDemoRoute);
+  elements.inviteMemberButton?.addEventListener("click", inviteCollaborator);
   elements.mobileQuickAddButton?.addEventListener("click", () => {
     activateSidebarTab("add");
     elements.cityForm.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -658,6 +665,7 @@ function render() {
   renderStats();
   renderDetails();
   renderFilterControls();
+  renderCollaborators();
   renderFeed();
 }
 
@@ -865,6 +873,54 @@ function renderFilterControls() {
   document.querySelectorAll(".segment").forEach((button) => {
     button.classList.toggle("active", button.dataset.filter === state.filter);
   });
+}
+
+function renderCollaborators() {
+  if (!elements.collaboratorList) return;
+  const members = state.members || [];
+  elements.collaboratorList.innerHTML = [
+    `<div class="member-row"><strong>我</strong><span>owner</span></div>`,
+    ...members.map(
+      (member) => `
+        <div class="member-row">
+          <strong>${escapeHtml(member.email)}</strong>
+          <span>${escapeHtml(member.role)} · ${escapeHtml(member.status || "pending")}</span>
+        </div>
+      `
+    )
+  ].join("");
+}
+
+async function inviteCollaborator() {
+  const email = elements.inviteEmail?.value.trim();
+  const role = elements.inviteRole?.value || "viewer";
+  if (!email) return;
+
+  const member = { email, role, status: isCloudConfigured() ? "pending" : "local" };
+  state.members = [
+    member,
+    ...(state.members || []).filter((item) => item.email.toLowerCase() !== email.toLowerCase())
+  ];
+  elements.inviteEmail.value = "";
+  saveState();
+  renderCollaborators();
+
+  if (!isCloudConfigured() || !cloudHydrated) {
+    showToast("协作成员已保存在本地演示状态。");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${cloudApiBase()}/maps/${encodeURIComponent(currentMapId())}/members`, {
+      method: "POST",
+      headers: cloudHeaders(),
+      body: JSON.stringify({ email, role })
+    });
+    if (!response.ok) throw new Error(`Invite failed: ${response.status}`);
+    showToast("协作邀请已发送。");
+  } catch {
+    showToast("邀请暂存在本地，云端发送失败。");
+  }
 }
 
 function renderFeed() {

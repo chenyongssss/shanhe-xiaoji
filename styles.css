@@ -156,7 +156,7 @@ p {
 
 .sidebar-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   border: 1px solid rgba(70, 43, 36, 0.08);
   border-radius: 999px;
@@ -228,11 +228,40 @@ p {
 }
 
 .city-form,
+.collab-form,
 .share-settings,
 .share-actions {
   display: grid;
   gap: 12px;
   margin-top: 14px;
+}
+
+.collab-form {
+  grid-template-columns: 1fr;
+}
+
+.member-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fffefd;
+  font-size: 13px;
+}
+
+.member-row span {
+  color: var(--muted);
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .share-settings {

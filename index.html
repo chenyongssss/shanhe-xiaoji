@@ -39,6 +39,7 @@
         <nav class="sidebar-tabs" aria-label="编辑面板">
           <button class="sidebar-tab active" data-sidebar-tab="add" type="button">添加</button>
           <button class="sidebar-tab" data-sidebar-tab="routes" type="button">路线</button>
+          <button class="sidebar-tab" data-sidebar-tab="collab" type="button">协作</button>
           <button class="sidebar-tab" data-sidebar-tab="share" type="button">分享</button>
         </nav>
 
@@ -114,6 +115,27 @@
             <h2>路线模板</h2>
           </div>
           <div class="template-grid" id="templateGrid"></div>
+        </section>
+
+        <section class="panel sidebar-tab-panel" data-panel="collab">
+          <div class="panel-title">
+            <h2>成员协作</h2>
+          </div>
+          <div class="collab-form">
+            <label>
+              邮箱
+              <input id="inviteEmail" type="email" placeholder="friend@example.com" />
+            </label>
+            <label>
+              角色
+              <select id="inviteRole">
+                <option value="editor">可编辑</option>
+                <option value="viewer">仅查看</option>
+              </select>
+            </label>
+            <button class="secondary-button" id="inviteMemberButton" type="button">发送邀请</button>
+          </div>
+          <div class="member-list" id="collaboratorList"></div>
         </section>
 
         <section class="panel sidebar-tab-panel" data-panel="share">

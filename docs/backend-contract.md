@@ -75,3 +75,24 @@
 ## GET /share-links/:token
 
 返回经过权限过滤后的地图状态。服务端必须移除私密字段，例如 `budget`、`notes`、`plan` 和未公开照片。
+
+## POST /maps/:mapId/members
+
+邀请协作成员。服务端应该只允许 owner 发起邀请，或允许 editor 邀请 viewer。
+
+```json
+{
+  "email": "friend@example.com",
+  "role": "editor"
+}
+```
+
+推荐返回：
+
+```json
+{
+  "email": "friend@example.com",
+  "role": "editor",
+  "status": "pending"
+}
+```
