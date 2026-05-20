@@ -39,6 +39,33 @@ const CITY_CATALOG = [
   { name: "乌鲁木齐", lon: 87.6168, lat: 43.8256, icon: "nature", tags: ["新疆", "自驾"] }
 ];
 
+const EXTRA_CITY_LOCATIONS = [
+  { name: "石家庄", lon: 114.5149, lat: 38.0428, icon: "museum", tags: ["燕赵", "正定"] },
+  { name: "太原", lon: 112.5489, lat: 37.8706, icon: "heritage", tags: ["晋祠", "古建"] },
+  { name: "长春", lon: 125.3235, lat: 43.8171, icon: "snow", tags: ["电影", "北国"] },
+  { name: "南昌", lon: 115.8582, lat: 28.6829, icon: "museum", tags: ["滕王阁", "夜景"] },
+  { name: "合肥", lon: 117.2272, lat: 31.8206, icon: "custom", tags: ["科技", "巢湖"] },
+  { name: "宁波", lon: 121.5504, lat: 29.8746, icon: "coast", tags: ["海港", "老街"] },
+  { name: "无锡", lon: 120.3119, lat: 31.4912, icon: "flower", tags: ["太湖", "樱花"] },
+  { name: "扬州", lon: 119.4127, lat: 32.3936, icon: "heritage", tags: ["园林", "早茶"] },
+  { name: "绍兴", lon: 120.5821, lat: 29.9971, icon: "heritage", tags: ["水乡", "黄酒"] },
+  { name: "嘉兴", lon: 120.7555, lat: 30.7461, icon: "heritage", tags: ["南湖", "古镇"] },
+  { name: "温州", lon: 120.6994, lat: 27.9949, icon: "coast", tags: ["山海", "小吃"] },
+  { name: "金华", lon: 119.6474, lat: 29.0791, icon: "food", tags: ["古村", "火腿"] },
+  { name: "台州", lon: 121.4208, lat: 28.6564, icon: "coast", tags: ["海岛", "糯叽叽"] },
+  { name: "烟台", lon: 121.4479, lat: 37.4638, icon: "coast", tags: ["海滨", "葡萄酒"] },
+  { name: "威海", lon: 122.1204, lat: 37.5131, icon: "coast", tags: ["海岸", "慢游"] },
+  { name: "秦皇岛", lon: 119.6005, lat: 39.9354, icon: "coast", tags: ["北戴河", "看海"] },
+  { name: "南宁", lon: 108.3669, lat: 22.817, icon: "food", tags: ["绿城", "粉"] },
+  { name: "北海", lon: 109.1199, lat: 21.4813, icon: "coast", tags: ["银滩", "海鲜"] },
+  { name: "西双版纳", lon: 100.797, lat: 22.009, icon: "nature", tags: ["热带", "雨林"] },
+  { name: "香格里拉", lon: 99.7065, lat: 27.8269, icon: "nature", tags: ["雪山", "高原"] },
+  { name: "张家界", lon: 110.4792, lat: 29.1171, icon: "nature", tags: ["山川", "徒步"] },
+  { name: "宜昌", lon: 111.2864, lat: 30.6919, icon: "nature", tags: ["三峡", "江景"] },
+  { name: "景德镇", lon: 117.1784, lat: 29.2688, icon: "museum", tags: ["陶瓷", "手作"] },
+  { name: "平遥", lon: 112.1758, lat: 37.1893, icon: "heritage", tags: ["古城", "晋商"] }
+];
+
 const ROUTE_TEMPLATES = [
   {
     id: "jiangnan",
@@ -103,10 +130,30 @@ const ICON_THEMES = {
   custom: ["#ff2442", "#ff8a76"]
 };
 
+const SUGGESTED_TAGS = [
+  "日出",
+  "美食",
+  "湖泊",
+  "日落",
+  "Citywalk",
+  "古城",
+  "海边",
+  "山川",
+  "摄影",
+  "徒步",
+  "亲子",
+  "自驾",
+  "避暑",
+  "夜景",
+  "小吃",
+  "博物馆"
+];
+
 const STORAGE_KEY = "china-travel-map-v3";
 const LEGACY_KEYS = ["china-travel-map-v2", "china-travel-map-v1"];
 const PHOTO_DB_NAME = "china-travel-map-photos";
 const PHOTO_STORE_NAME = "photos";
+const GEOCODE_CACHE_KEY = "china-travel-map-geocode-cache-v1";
 const CLOUD_TOKEN_KEY = "shanhe-cloud-token";
 const CLOUD_MAP_KEY = "shanhe-cloud-map-id";
 const CITY_PROVINCES = {
@@ -200,6 +247,7 @@ const elements = {
   budgetInput: document.querySelector("#budgetInput"),
   titleInput: document.querySelector("#titleInput"),
   tagsInput: document.querySelector("#tagsInput"),
+  tagSuggestions: document.querySelector("#tagSuggestions"),
   notesInput: document.querySelector("#notesInput"),
   planInput: document.querySelector("#planInput"),
   albumGrid: document.querySelector("#albumGrid"),
@@ -240,6 +288,7 @@ async function bootstrap() {
     hydrateFromStorage();
   }
   populateCityOptions();
+  renderTagSuggestions();
   renderTemplateGrid();
   bindEvents();
   render();
@@ -470,7 +519,8 @@ function setCloudStatus(label) {
 }
 
 function populateCityOptions() {
-  elements.cityOptions.innerHTML = CITY_CATALOG.map((city) => `<option value="${escapeHtml(city.name)}"></option>`).join("");
+  const options = [...CITY_CATALOG, ...EXTRA_CITY_LOCATIONS].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+  elements.cityOptions.innerHTML = options.map((city) => `<option value="${escapeHtml(city.name)}"></option>`).join("");
 }
 
 function renderTemplateGrid() {
@@ -484,14 +534,36 @@ function renderTemplateGrid() {
   ).join("");
 }
 
+function renderTagSuggestions() {
+  if (!elements.tagSuggestions) return;
+  elements.tagSuggestions.innerHTML = SUGGESTED_TAGS.map(
+    (tag) => `<button class="tag-suggestion" data-tag="${escapeHtml(tag)}" type="button">#${escapeHtml(tag)}</button>`
+  ).join("");
+}
+
 function bindEvents() {
-  elements.cityForm.addEventListener("submit", (event) => {
+  elements.cityForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const name = elements.cityName.value.trim();
     if (!name) return;
 
-    const catalogCity = findCatalogCity(name);
-    const cityBase = catalogCity || createCustomCity(name);
+    const submitButton = elements.cityForm.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton?.textContent;
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "定位中...";
+    }
+
+    const cityBase = await resolveCityLocation(name);
+    if (!cityBase) {
+      showToast("暂时无法定位这座城市，请换成更完整的城市名，例如“安徽合肥”。");
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+      }
+      return;
+    }
+
     upsertCity(cityBase.name, {
       ...cityBase,
       icon: elements.cityIcon.value || cityBase.icon,
@@ -503,6 +575,11 @@ function bindEvents() {
     elements.cityForm.reset();
     saveState();
     render();
+
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalButtonText;
+    }
   });
 
   elements.searchInput.addEventListener("input", () => {
@@ -542,6 +619,20 @@ function bindEvents() {
 
   elements.detailStatusSelect.addEventListener("change", updateSelectedCity);
   elements.detailIconSelect.addEventListener("change", updateSelectedCity);
+
+  elements.tagsInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    commitTagInput();
+  });
+
+  elements.tagsInput.addEventListener("blur", commitTagInput);
+
+  elements.tagSuggestions?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-tag]");
+    if (!button) return;
+    addTagToSelectedCity(button.dataset.tag);
+  });
 
   elements.favoriteButton.addEventListener("click", () => {
     const city = getSelectedCity();
@@ -606,22 +697,89 @@ function bindEvents() {
 }
 
 function findCatalogCity(name) {
-  return CITY_CATALOG.find((city) => city.name === name);
+  const normalizedName = normalizeCitySearchName(name);
+  return CITY_CATALOG.find((city) => normalizeCitySearchName(city.name) === normalizedName);
+}
+
+function findKnownCity(name) {
+  const normalizedName = normalizeCitySearchName(name);
+  return [...CITY_CATALOG, ...EXTRA_CITY_LOCATIONS].find((city) => normalizeCitySearchName(city.name) === normalizedName);
 }
 
 function createCustomCity(name) {
-  const hash = Array.from(name).reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return {
     name,
-    lon: 101 + (hash % 22),
-    lat: 24 + (hash % 16),
+    lon: 104.1954,
+    lat: 35.8617,
     icon: "custom",
     tags: ["自定义"]
   };
 }
 
+async function resolveCityLocation(name) {
+  const knownCity = findKnownCity(name);
+  if (knownCity) return knownCity;
+
+  const cache = readGeocodeCache();
+  const cacheKey = normalizeCitySearchName(name);
+  if (cache[cacheKey]) return cache[cacheKey];
+
+  const geocoded = await geocodeCity(name);
+  if (!geocoded) return null;
+
+  cache[cacheKey] = geocoded;
+  localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(cache));
+  return geocoded;
+}
+
+async function geocodeCity(name) {
+  const query = encodeURIComponent(`${name} 中国`);
+  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=cn&accept-language=zh-CN&q=${query}`;
+
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return null;
+
+    const [result] = await response.json();
+    const lon = Number(result?.lon);
+    const lat = Number(result?.lat);
+    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+
+    return {
+      name: normalizeGeocodedCityName(result?.name || name),
+      lon,
+      lat,
+      province: inferProvince(result?.display_name || ""),
+      icon: "custom",
+      tags: ["自定义"]
+    };
+  } catch {
+    return null;
+  }
+}
+
+function readGeocodeCache() {
+  return safeParse(localStorage.getItem(GEOCODE_CACHE_KEY)) || {};
+}
+
+function normalizeCitySearchName(name) {
+  return String(name)
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/^(中国|中华人民共和国)/u, "")
+    .replace(/(市|地区|盟|自治州|特别行政区)$/u, "");
+}
+
+function normalizeGeocodedCityName(name) {
+  return normalizeCitySearchName(name) || String(name).trim();
+}
+
+function inferProvince(displayName) {
+  return Object.values(CITY_PROVINCES).find((province) => String(displayName).includes(province)) || "自定义";
+}
+
 function normalizeCity(city) {
-  const catalogCity = findCatalogCity(city.name) || {};
+  const catalogCity = findKnownCity(city.name) || {};
   const fallback = createCustomCity(city.name);
   const tags = Array.isArray(city.tags) ? city.tags : splitTags(city.tags || "");
   return {
@@ -690,6 +848,25 @@ function updateSelectedCity() {
   city.tags = uniqueTags(splitTags(elements.tagsInput.value));
   city.notes = elements.notesInput.value;
   city.plan = elements.planInput.value;
+  saveState();
+  render();
+}
+
+function commitTagInput() {
+  const city = getSelectedCity();
+  if (!city) return;
+  const tags = uniqueTags(splitTags(elements.tagsInput.value));
+  elements.tagsInput.value = tags.join(", ");
+  city.tags = tags;
+  saveState();
+  render();
+}
+
+function addTagToSelectedCity(tag) {
+  const city = getSelectedCity();
+  if (!city) return;
+  city.tags = uniqueTags([...(city.tags || []), tag]);
+  elements.tagsInput.value = city.tags.join(", ");
   saveState();
   render();
 }

@@ -300,8 +300,12 @@
               </label>
               <label class="full-label">
                 标签
-                <input id="tagsInput" placeholder="Citywalk, 美食, 博物馆" />
+                <input id="tagsInput" placeholder="输入后按回车，例如：日出、美食、湖泊、日落" />
               </label>
+              <div class="tag-editor" aria-label="常用标签">
+                <div class="tag-suggestions" id="tagSuggestions"></div>
+                <p class="tag-hint">可用逗号、空格或回车添加自定义标签。</p>
+              </div>
               <label class="full-label">
                 攻略 / 回忆
                 <textarea id="notesInput" rows="4" placeholder="写下推荐景点、餐厅、路线、避坑点或旅行回忆"></textarea>
