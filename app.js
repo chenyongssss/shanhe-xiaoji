@@ -268,6 +268,8 @@ const elements = {
   copyShareButton: document.querySelector("#copyShareButton"),
   posterButton: document.querySelector("#posterButton"),
   exportDataButton: document.querySelector("#exportDataButton"),
+  importDataButton: document.querySelector("#importDataButton"),
+  importDataInput: document.querySelector("#importDataInput"),
   clearLocalButton: document.querySelector("#clearLocalButton"),
   posterDialog: document.querySelector("#posterDialog"),
   closePosterButton: document.querySelector("#closePosterButton"),
@@ -688,6 +690,8 @@ function bindEvents() {
   elements.copyShareButton.addEventListener("click", copyShareLink);
   elements.posterButton.addEventListener("click", openPoster);
   elements.exportDataButton?.addEventListener("click", exportMapData);
+  elements.importDataButton?.addEventListener("click", () => elements.importDataInput?.click());
+  elements.importDataInput?.addEventListener("change", importMapData);
   elements.clearLocalButton?.addEventListener("click", clearLocalMapData);
   elements.closePosterButton.addEventListener("click", () => elements.posterDialog.close());
   window.addEventListener("resize", () => {
@@ -1447,12 +1451,12 @@ async function copyText(text) {
   }
 }
 
-function exportMapData() {
+async function exportMapData() {
   const payload = {
     exportedAt: new Date().toISOString(),
     app: "山河小记",
     version: "0.1.0",
-    state: portableState({ includePrivate: true })
+    state: await portableStateForExport()
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -1462,6 +1466,92 @@ function exportMapData() {
   link.click();
   URL.revokeObjectURL(url);
   showToast("地图数据已导出。");
+}
+
+async function portableStateForExport() {
+  const exported = portableState({ includePrivate: true });
+  for (const [name, exportedCity] of Object.entries(exported.cities)) {
+    const sourceCity = state.cities[name];
+    exportedCity.photos = (await Promise.all((sourceCity?.photos || []).map(exportPhotoRef))).filter(Boolean);
+  }
+  return exported;
+}
+
+async function exportPhotoRef(photoRef) {
+  if (!photoRef) return "";
+  if (String(photoRef).startsWith("data:")) return photoRef;
+  if (photoCache.has(photoRef)) return photoCache.get(photoRef);
+  try {
+    return (await getPhoto(photoRef)) || "";
+  } catch {
+    return "";
+  }
+}
+
+async function importMapData(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const payload = JSON.parse(await file.text());
+    const imported = normalizeImportedState(payload);
+    const hasCurrentData = Object.keys(state.cities).length > 0;
+    const shouldReplace = !hasCurrentData || window.confirm("导入后覆盖当前网页里的地图数据？点击“取消”则合并导入。");
+
+    state = shouldReplace ? imported : mergeImportedState(state, imported);
+    persistLocalState();
+    await migrateLegacyPhotos();
+    saveState();
+    render();
+    showToast(`已导入 ${Object.keys(imported.cities).length} 座城市。`);
+  } catch {
+    showToast("导入失败，请选择山河小记导出的 JSON 文件。");
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function normalizeImportedState(payload) {
+  const importedState = payload?.state || payload;
+  if (!importedState?.cities || typeof importedState.cities !== "object") {
+    throw new Error("Invalid import file");
+  }
+
+  const cities = Object.fromEntries(
+    Object.entries(importedState.cities).map(([name, city]) => [city.name || name, normalizeCity({ ...city, name: city.name || name })])
+  );
+
+  return {
+    cities,
+    members: Array.isArray(importedState.members) ? importedState.members : [],
+    selectedCity: cities[importedState.selectedCity] ? importedState.selectedCity : Object.keys(cities)[0] || null,
+    filter: "all",
+    query: ""
+  };
+}
+
+function mergeImportedState(currentState, importedState) {
+  return {
+    ...currentState,
+    cities: {
+      ...currentState.cities,
+      ...importedState.cities
+    },
+    members: uniqueMembers([...(currentState.members || []), ...(importedState.members || [])]),
+    selectedCity: importedState.selectedCity || currentState.selectedCity,
+    filter: "all",
+    query: ""
+  };
+}
+
+function uniqueMembers(members) {
+  const seen = new Set();
+  return members.filter((member) => {
+    const email = String(member.email || "").toLowerCase();
+    if (!email || seen.has(email)) return false;
+    seen.add(email);
+    return true;
+  });
 }
 
 function clearLocalMapData() {
