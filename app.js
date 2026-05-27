@@ -149,6 +149,14 @@ const SUGGESTED_TAGS = [
   "博物馆"
 ];
 
+const APP_CONFIG_DEFAULTS = {
+  siteTitle: "山河小记",
+  siteSubtitle: "把去过的城市做成一张好看的旅行主页",
+  ownerName: "",
+  defaultMapName: "我的中国旅行灵感图",
+  seedDataUrl: ""
+};
+
 const STORAGE_KEY = "china-travel-map-v3";
 const LEGACY_KEYS = ["china-travel-map-v2", "china-travel-map-v1"];
 const PHOTO_DB_NAME = "china-travel-map-photos";
@@ -203,7 +211,7 @@ let deletedSnapshot = null;
 let photoDbPromise = null;
 const photoCache = new Map();
 const pendingPhotoLoads = new Set();
-let cloudConfig = { ...(window.SHANHE_CONFIG || {}) };
+let cloudConfig = { ...APP_CONFIG_DEFAULTS, ...(window.SHANHE_CONFIG || {}) };
 let cloudSaveTimer = null;
 let cloudHydrated = false;
 let state = {
@@ -277,6 +285,12 @@ const elements = {
   feedGrid: document.querySelector("#feedGrid"),
   feedCount: document.querySelector("#feedCount"),
   cloudSyncStatus: document.querySelector("#cloudSyncStatus"),
+  brandTitle: document.querySelector("#brandTitle"),
+  brandSubtitle: document.querySelector("#brandSubtitle"),
+  mobileBrandTitle: document.querySelector("#mobileBrandTitle"),
+  mobileBrandSubtitle: document.querySelector("#mobileBrandSubtitle"),
+  topbarEyebrow: document.querySelector("#topbarEyebrow"),
+  topbarTitle: document.querySelector("#topbarTitle"),
   toast: document.querySelector("#toast")
 };
 
@@ -284,10 +298,14 @@ bootstrap();
 
 async function bootstrap() {
   await loadRuntimeConfig();
+  applyRuntimeConfig();
   const sharedFromServer = await hydrateFromShareRoute();
   if (!sharedFromServer) {
-    hydrateFromUrl();
-    hydrateFromStorage();
+    const sharedFromUrl = hydrateFromUrl();
+    if (!sharedFromUrl) {
+      const hydratedFromStorage = hydrateFromStorage();
+      if (!hydratedFromStorage) await hydrateFromStarterMap();
+    }
   }
   populateCityOptions();
   renderTagSuggestions();
@@ -325,6 +343,21 @@ async function loadRuntimeConfig() {
   }
 }
 
+function applyRuntimeConfig() {
+  const siteTitle = cloudConfig.siteTitle || APP_CONFIG_DEFAULTS.siteTitle;
+  const siteSubtitle = cloudConfig.siteSubtitle || APP_CONFIG_DEFAULTS.siteSubtitle;
+  const defaultMapName = cloudConfig.defaultMapName || APP_CONFIG_DEFAULTS.defaultMapName;
+  const ownerName = String(cloudConfig.ownerName || "").trim();
+
+  document.title = `${siteTitle} - 中国旅行地图`;
+  setText(elements.brandTitle, siteTitle);
+  setText(elements.brandSubtitle, siteSubtitle);
+  setText(elements.mobileBrandTitle, siteTitle);
+  setText(elements.mobileBrandSubtitle, siteSubtitle);
+  setText(elements.topbarTitle, defaultMapName);
+  setText(elements.topbarEyebrow, ownerName ? `${ownerName} · Local First` : "Travel Map · Local First");
+}
+
 async function hydrateFromShareRoute() {
   const match = window.location.pathname.match(/^\/share\/([^/]+)\/?$/);
   if (!match || !cloudApiBase()) return false;
@@ -351,32 +384,52 @@ async function hydrateFromShareRoute() {
 
 function hydrateFromUrl() {
   const shared = new URLSearchParams(window.location.search).get("map");
-  if (!shared) return;
+  if (!shared) return false;
 
   try {
     const decoded = JSON.parse(base64UrlDecode(shared));
-    if (!decoded.cities) return;
+    if (!decoded.cities) return false;
     state.cities = Object.fromEntries(
       Object.entries(decoded.cities).map(([name, city]) => [name, normalizeCity(city)])
     );
     showToast("已载入分享地图，照片原图与私密正文不会同步。");
+    return true;
   } catch {
     showToast("分享链接无法识别。");
+    return false;
   }
 }
 
 function hydrateFromStorage() {
-  if (Object.keys(state.cities).length > 0) return;
+  if (Object.keys(state.cities).length > 0) return true;
   const saved =
     safeParse(localStorage.getItem(STORAGE_KEY)) ||
     LEGACY_KEYS.map((key) => safeParse(localStorage.getItem(key))).find(Boolean);
-  if (!saved?.cities) return;
+  if (!saved?.cities) return false;
 
   state = {
     ...state,
     ...saved,
     cities: Object.fromEntries(Object.entries(saved.cities).map(([name, city]) => [name, normalizeCity(city)]))
   };
+  return true;
+}
+
+async function hydrateFromStarterMap() {
+  if (!cloudConfig.seedDataUrl) return false;
+
+  try {
+    const response = await fetch(cloudConfig.seedDataUrl, { cache: "no-store" });
+    if (!response.ok) return false;
+    const starter = normalizeImportedState(await response.json());
+    if (!Object.keys(starter.cities).length) return false;
+    state = starter;
+    persistLocalState();
+    showToast("已载入模板初始地图。");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function safeParse(value) {
@@ -457,7 +510,7 @@ async function saveStateToCloud() {
       method: "PUT",
       headers: cloudHeaders(),
       body: JSON.stringify({
-        title: "山河小记",
+        title: cloudConfig.defaultMapName || cloudConfig.siteTitle || "山河小记",
         state: portableState({ includePrivate: true })
       })
     });
@@ -1454,7 +1507,7 @@ async function copyText(text) {
 async function exportMapData() {
   const payload = {
     exportedAt: new Date().toISOString(),
-    app: "山河小记",
+    app: cloudConfig.siteTitle || "山河小记",
     version: "0.1.0",
     state: await portableStateForExport()
   };
@@ -1590,11 +1643,11 @@ function drawPoster() {
   ctx.fill();
   ctx.fillStyle = "#ffffff";
   ctx.font = "800 28px Microsoft YaHei, sans-serif";
-  ctx.fillText("山河小记", 98, 107);
+  ctx.fillText(cloudConfig.siteTitle || "山河小记", 98, 107);
 
   ctx.fillStyle = "#222222";
   ctx.font = "900 74px Microsoft YaHei, sans-serif";
-  ctx.fillText("我的中国旅行灵感图", 74, 205);
+  ctx.fillText(cloudConfig.defaultMapName || "我的中国旅行灵感图", 74, 205);
   ctx.fillStyle = "#7a7373";
   ctx.font = "400 34px Microsoft YaHei, sans-serif";
   ctx.fillText(`已去 ${visited.length} 座 · 计划 ${planned.length} 座 · ${computePersona(cities)}`, 78, 265);

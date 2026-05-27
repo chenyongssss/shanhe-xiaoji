@@ -1,0 +1,28 @@
+{
+  "app": "山河小记",
+  "version": "0.1.0",
+  "state": {
+    "cities": {
+      "普者黑": {
+        "name": "普者黑",
+        "lon": 104.128,
+        "lat": 24.127,
+        "province": "云南",
+        "icon": "sunrise",
+        "status": "wishlist",
+        "title": "普者黑日出和湖泊路线",
+        "tags": ["日出", "美食", "湖泊", "日落"],
+        "days": "2",
+        "budget": "",
+        "notes": "适合作为自部署模板的示例地点。可以补充交通、拍照机位、餐厅和避坑点。",
+        "plan": "预留一个清晨看日出，一个傍晚看日落。",
+        "photos": [],
+        "favorite": true
+      }
+    },
+    "members": [],
+    "selectedCity": "普者黑",
+    "filter": "all",
+    "query": ""
+  }
+}

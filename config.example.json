@@ -1,5 +1,10 @@
 {
-  "apiBaseUrl": "/api",
+  "siteTitle": "我的旅行地图",
+  "siteSubtitle": "把去过的地方做成一张旅行主页",
+  "ownerName": "旅行者",
+  "defaultMapName": "我的中国旅行灵感图",
+  "seedDataUrl": "./data/starter-map.example.json",
+  "apiBaseUrl": "",
   "mapId": "default",
   "accessToken": ""
 }
