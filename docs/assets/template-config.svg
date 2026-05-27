@@ -1,0 +1,29 @@
+<svg width="960" height="460" viewBox="0 0 960 460" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">配置自己的旅行地图模板</title>
+  <desc id="desc">通过 config.json 修改站点标题，通过 starter-map.json 放入初始地点。</desc>
+  <rect width="960" height="460" rx="28" fill="#F8F5F1"/>
+  <rect x="40" y="40" width="880" height="380" rx="24" fill="white" stroke="#EBDDD6"/>
+  <text x="70" y="92" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="32" font-weight="800">把模板改成自己的旅行地图</text>
+  <text x="70" y="128" fill="#706C68" font-family="Microsoft YaHei, Arial, sans-serif" font-size="18">不改代码，只改两个 JSON 文件</text>
+
+  <g transform="translate(70 168)">
+    <rect width="390" height="190" rx="16" fill="#202226"/>
+    <text x="24" y="42" fill="#FFD37D" font-family="Consolas, monospace" font-size="18">{</text>
+    <text x="44" y="72" fill="#FFFFFF" font-family="Consolas, monospace" font-size="18">"siteTitle": "我的旅行地图",</text>
+    <text x="44" y="102" fill="#FFFFFF" font-family="Consolas, monospace" font-size="18">"ownerName": "旅行者",</text>
+    <text x="44" y="132" fill="#FFFFFF" font-family="Consolas, monospace" font-size="18">"seedDataUrl": "./data/..."</text>
+    <text x="24" y="162" fill="#FFD37D" font-family="Consolas, monospace" font-size="18">}</text>
+    <text x="24" y="222" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="800">config.json</text>
+  </g>
+
+  <g transform="translate(520 168)">
+    <rect width="330" height="190" rx="16" fill="#FFF8F6" stroke="#FFD2DA"/>
+    <circle cx="88" cy="88" r="42" fill="#FF2442" opacity="0.92"/>
+    <path d="M88 136C88 136 125 103 125 74C125 53 109 38 88 38C67 38 51 53 51 74C51 103 88 136 88 136Z" fill="white"/>
+    <circle cx="88" cy="74" r="14" fill="#FF2442"/>
+    <text x="154" y="72" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="24" font-weight="800">初始地点</text>
+    <text x="154" y="106" fill="#706C68" font-family="Microsoft YaHei, Arial, sans-serif" font-size="17">普者黑 / 日出 / 湖泊</text>
+    <text x="154" y="136" fill="#706C68" font-family="Microsoft YaHei, Arial, sans-serif" font-size="17">换成你的旅行清单</text>
+    <text x="24" y="222" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="800">data/starter-map.json</text>
+  </g>
+</svg>

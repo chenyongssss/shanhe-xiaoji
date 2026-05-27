@@ -1,0 +1,38 @@
+<svg width="960" height="420" viewBox="0 0 960 420" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">山河小记一键本地启动流程</title>
+  <desc id="desc">下载项目，双击 start-local.bat，然后在浏览器打开本地旅行地图。</desc>
+  <rect width="960" height="420" rx="28" fill="#FFF8F6"/>
+  <rect x="32" y="32" width="896" height="356" rx="24" fill="white" stroke="#F0DFDF"/>
+  <text x="64" y="88" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="34" font-weight="800">3 步启动自己的旅行地图</text>
+  <text x="64" y="124" fill="#706C68" font-family="Microsoft YaHei, Arial, sans-serif" font-size="18">适合发给朋友、粉丝或小红书读者的本地自部署流程</text>
+
+  <g transform="translate(70 168)">
+    <rect width="230" height="150" rx="18" fill="#FFF3F5" stroke="#FFD2DA"/>
+    <circle cx="42" cy="42" r="22" fill="#FF2442"/>
+    <text x="35" y="50" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="800">1</text>
+    <text x="28" y="90" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="24" font-weight="800">下载项目</text>
+    <text x="28" y="122" fill="#706C68" font-family="Microsoft YaHei, Arial, sans-serif" font-size="16">GitHub 点 Code / Download ZIP</text>
+  </g>
+
+  <path d="M322 244H382" stroke="#FF8A76" stroke-width="6" stroke-linecap="round"/>
+  <path d="M370 230L388 244L370 258" stroke="#FF8A76" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g transform="translate(404 168)">
+    <rect width="230" height="150" rx="18" fill="#F7FBFF" stroke="#CFE2FF"/>
+    <circle cx="42" cy="42" r="22" fill="#5A8DEE"/>
+    <text x="35" y="50" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="800">2</text>
+    <text x="28" y="90" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="24" font-weight="800">双击启动</text>
+    <text x="28" y="122" fill="#706C68" font-family="Consolas, monospace" font-size="16">start-local.bat</text>
+  </g>
+
+  <path d="M656 244H716" stroke="#FF8A76" stroke-width="6" stroke-linecap="round"/>
+  <path d="M704 230L722 244L704 258" stroke="#FF8A76" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g transform="translate(738 168)">
+    <rect width="150" height="150" rx="18" fill="#F5FBF7" stroke="#CFE8D8"/>
+    <circle cx="42" cy="42" r="22" fill="#5F9B7B"/>
+    <text x="35" y="50" fill="white" font-family="Arial, sans-serif" font-size="24" font-weight="800">3</text>
+    <text x="28" y="90" fill="#202226" font-family="Microsoft YaHei, Arial, sans-serif" font-size="24" font-weight="800">开始记录</text>
+    <text x="28" y="122" fill="#706C68" font-family="Microsoft YaHei, Arial, sans-serif" font-size="16">城市 / 照片 / 攻略</text>
+  </g>
+</svg>

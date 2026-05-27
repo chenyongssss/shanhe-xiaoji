@@ -17,11 +17,12 @@
 ## 用户流程
 
 1. 用户 fork 仓库或下载模板。
-2. 修改 `config.json` 中的站点名称、简介、默认地图数据等配置。
-3. 部署到 GitHub Pages 或 Vercel。
-4. 打开自己的站点，录入旅行地点。
-5. 使用“导出数据 / 导入数据”迁移本地内容。
-6. 分享自己的公开网址。
+2. Windows 用户双击 `start-local.bat`，先在本地打开体验。
+3. 修改 `config.json` 中的站点名称、简介、默认地图数据等配置。
+4. 部署到 GitHub Pages 或 Vercel。
+5. 打开自己的站点，录入旅行地点。
+6. 使用“导出数据 / 导入数据”迁移本地内容。
+7. 分享自己的公开网址。
 
 ## 轻量版需要补齐的能力
 
@@ -87,6 +88,7 @@ data/starter-map.json
 - 让 `config.json` 控制站点标题、副标题、地图名称。
 - 增加 `data/starter-map.json` 初始数据加载。
 - README 增加 GitHub Pages 部署教程。
+- 增加普通用户可双击启动的 `start-local.bat`。
 
 当前已完成：
 
@@ -94,6 +96,8 @@ data/starter-map.json
 - 页面标题、品牌名、品牌副标题、顶部地图名支持运行时配置。
 - 增加 `data/starter-map.example.json` 作为初始地图样例。
 - 首次打开且本地无数据时，可从 `seedDataUrl` 自动加载初始地图。
+- 增加 `start-local.bat`，避免 Windows PowerShell 执行策略挡住普通用户。
+- README 增加插图、图文步骤和小红书分享文案参考。
 
 ### 阶段 B：导入助手
 
