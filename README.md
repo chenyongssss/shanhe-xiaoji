@@ -29,6 +29,20 @@ http://127.0.0.1:4173/
 
 > 需要电脑已安装 Python 3。大多数 Windows 用户装过 Anaconda、Python 或开发环境后都可以直接运行。
 
+### macOS / Linux 用户
+
+打开终端，进入项目文件夹，然后运行：
+
+```bash
+sh start-local.sh
+```
+
+浏览器会打开：
+
+```text
+http://127.0.0.1:4173/
+```
+
 ### 命令行启动
 
 ```powershell
